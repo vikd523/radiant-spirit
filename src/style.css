@@ -2124,3 +2124,157 @@ body {
     padding: var(--space-lg) var(--space-md);
   }
 }
+
+/* ============================================
+   SPLINE 3D SIDEBAR
+   ============================================ */
+
+/* Anti-scroll-hijack safeguard (Spline can inject overflow:hidden) */
+body {
+  overflow: auto !important;
+}
+
+/* Shell: two-panel layout for authenticated pages */
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+}
+
+/* --- Left Sidebar --- */
+.spline-sidebar {
+  width: 280px;
+  min-width: 280px;
+  display: flex;
+  flex-direction: column;
+  background: rgba(8, 8, 16, 0.9);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-right: 1px solid var(--border-subtle);
+  padding: var(--space-lg) var(--space-md);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  z-index: 50;
+  overflow: hidden;
+}
+
+.sidebar-brand {
+  text-align: center;
+  padding-bottom: var(--space-md);
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: var(--space-md);
+}
+
+.sidebar-logo {
+  font-size: 1.4rem !important;
+  letter-spacing: 0.02em;
+}
+
+/* Spline container — fills the sidebar center */
+.spline-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  min-height: 300px;
+  contain: strict;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.spline-container spline-viewer {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Hide Spline watermark (CSS override for free plan) */
+spline-viewer::part(logo) {
+  display: none;
+}
+
+spline-viewer {
+  --spline-viewer-logo-display: none;
+}
+
+/* Fallback art when Spline doesn't load (mobile/low-end) */
+.spline-fallback-art {
+  font-size: 6rem;
+  opacity: 0.4;
+  animation: float-ghost 3s ease-in-out infinite;
+}
+
+@keyframes float-ghost {
+
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+
+  50% {
+    transform: translateY(-12px) scale(1.05);
+  }
+}
+
+/* Sidebar stats row */
+.sidebar-stats {
+  display: flex;
+  justify-content: space-around;
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--border-subtle);
+  margin-top: var(--space-md);
+}
+
+.sidebar-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.sidebar-stat-value {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--accent-gold), var(--accent-pink));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.sidebar-stat-label {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+/* --- Right Main Panel --- */
+.main-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* When sidebar is present, hide the mobile logo in header */
+.mobile-logo {
+  display: none;
+}
+
+/* --- Responsive: Sidebar hidden below 1024px --- */
+@media (max-width: 1023px) {
+  .spline-sidebar {
+    display: none;
+  }
+
+  .mobile-logo {
+    display: block;
+  }
+
+  .app-shell {
+    flex-direction: column;
+  }
+}
