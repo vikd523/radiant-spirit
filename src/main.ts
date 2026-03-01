@@ -245,6 +245,9 @@ function render(): void {
 
   // Show landing page if not authenticated
   if (!state.user) {
+    const splineContainer = document.getElementById('spline-persistent-container');
+    if (splineContainer) splineContainer.style.display = 'none';
+
     app.innerHTML = `
       ${renderLanding()}
       ${renderAuthModal(state.showAuthModal)}
@@ -254,9 +257,11 @@ function render(): void {
   }
 
   // Authenticated — show the full app
-
-  const SPLINE_URL = 'https://prod.spline.design/NoIfSkVO2P9kDRDU/scene.splinecode';
-  const shouldLoadSpline = window.innerWidth >= 1024 && navigator.hardwareConcurrency > 2;
+  const splineContainer = document.getElementById('spline-persistent-container');
+  if (splineContainer) {
+    const shouldLoadSpline = window.innerWidth >= 1024 && navigator.hardwareConcurrency > 2;
+    splineContainer.style.display = shouldLoadSpline ? 'block' : 'none';
+  }
 
   app.innerHTML = `
     <div class="app-container">
@@ -271,11 +276,6 @@ function render(): void {
           </div>
         </div>
       </header>
-
-      ${shouldLoadSpline ? `
-      <div class="spline-widget-container" id="spline-container">
-        <spline-viewer url="${SPLINE_URL}" background="transparent" events-target="global"></spline-viewer>
-      </div>` : ''}
 
       <main class="stage">
         ${state.isLoadingApi ? renderLoading() : ''}
