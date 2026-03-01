@@ -254,21 +254,12 @@ function render(): void {
   }
 
   // Authenticated — show the full app
-  const set = getActiveSet();
 
   app.innerHTML = `
     <header class="app-header">
       <div class="app-logo">✦ POKESPHERE</div>
       <div class="header-actions">
         <button class="open-btn small-btn" id="MyCollectionBtn">My Collection</button>
-        <div class="set-selector">
-          <label for="set-select">Expansion</label>
-          <select id="set-select">
-            ${Object.entries(SETS).map(([id, s]) =>
-    `<option value="${id}" ${id === state.activeSetId ? 'selected' : ''}>${s.set.name}</option>`
-  ).join('')}
-          </select>
-        </div>
         <div class="auth-header-user">
           <span class="auth-avatar">👤</span>
           <span class="auth-name">${state.user.displayName}</span>
@@ -282,7 +273,7 @@ function render(): void {
       ${state.apiError ? `<div class="api-error">${state.apiError}</div>` : ''}
       ${state.showInventory ? renderInventory() :
       state.showSummary && state.currentPack ? renderPackSummary() :
-        state.currentPack ? renderRevealArea() : renderPackSelect(set)}
+        state.currentPack ? renderRevealArea() : renderPackSelect()}
     </main>
 
     <footer class="stats-banner">
@@ -377,16 +368,21 @@ function renderLoading(): string {
   `;
 }
 
-function renderPackSelect(set: SetData): string {
+function renderPackSelect(): string {
+  const activeSet = getActiveSet();
   return `
-    <h1 class="set-title">${set.set.name}</h1>
-    <p class="set-subtitle">${set.set.series} · ${set.set.totalCards} Cards</p>
-    <div class="pack-container" id="pack-container">
-      <div class="pack-wrapper">
-        <span class="pack-icon">🎴</span>
-        <span class="pack-set-name">${set.set.name}</span>
-        <span class="pack-label">Booster Pack</span>
-      </div>
+    <h1 class="set-title">${activeSet.set.name}</h1>
+    <p class="set-subtitle">${activeSet.set.series} · ${activeSet.set.totalCards} Cards</p>
+    <div class="pack-selection-carousel" id="pack-selection-carousel">
+      ${Object.entries(SETS).map(([id, set]) => `
+        <div class="pack-container ${id === state.activeSetId ? 'active' : ''}" data-set-id="${id}">
+          <div class="pack-wrapper">
+            <span class="pack-icon">🎴</span>
+            <span class="pack-set-name">${set.set.name}</span>
+            <span class="pack-label">Booster Pack</span>
+          </div>
+        </div>
+      `).join('')}
     </div>
     <button class="open-btn" id="open-btn" ${state.isLoadingApi ? 'disabled' : ''}>Open Pack</button>
   `;
@@ -431,6 +427,10 @@ function renderRevealArea(): string {
           ${pack.map((_, i) => `<div class="timeline-dot ${i === state.activeCardIndex ? 'active' : ''} ${i < state.revealedCount ? 'revealed' : ''}" id="dot-${i}" data-idx="${i}"></div>`).join('')}
         </div>
         
+        <div class="post-reveal-actions ${allRevealed ? 'hidden' : ''}" id="pre-reveal-actions">
+          <button class="open-btn small-btn" id="reveal-all-btn">Flip All Cards</button>
+        </div>
+
         <div class="post-reveal-actions ${allRevealed ? '' : 'hidden'}" id="post-reveal-actions">
           <button class="open-btn summary-btn" id="view-summary-btn">📊 Pack Summary</button>
           <button class="open-btn" id="open-another-btn">Open Another Pack</button>
@@ -635,17 +635,20 @@ function renderPackSummary(): string {
 
 // ─── Events ────────────────────────────────────────
 function bindEvents(): void {
-  const setSelect = document.getElementById('set-select') as HTMLSelectElement;
-  setSelect?.addEventListener('change', (e) => {
-    const target = e.target as HTMLSelectElement;
-    state.activeSetId = target.value;
-    state.currentPack = null;
-    state.revealedCount = 0;
-    state.isOpening = false;
-    state.lookupMap = null;
-    state.showSummary = false;
-    render();
-    loadApiData();
+  document.querySelectorAll('.pack-container').forEach(el => {
+    el.addEventListener('click', () => {
+      const setId = el.getAttribute('data-set-id');
+      if (setId && setId !== state.activeSetId) {
+        state.activeSetId = setId;
+        state.currentPack = null;
+        state.revealedCount = 0;
+        state.isOpening = false;
+        state.lookupMap = null;
+        state.showSummary = false;
+        render();
+        loadApiData();
+      }
+    });
   });
 
   const openBtn = document.getElementById('open-btn');
@@ -660,6 +663,11 @@ function bindEvents(): void {
     state.isOpening = false;
     state.showSummary = false;
     render();
+  });
+
+  const revealAllBtn = document.getElementById('reveal-all-btn');
+  revealAllBtn?.addEventListener('click', () => {
+    revealAllCards();
   });
 
   const viewSummaryBtn = document.getElementById('view-summary-btn');
@@ -716,14 +724,15 @@ function bindEvents(): void {
   // Carousel & Reveal logic
   if (state.currentPack) {
     document.getElementById('carousel-track')?.addEventListener('click', (e) => {
-      // Only allow revealing if looking at the next unrevealed card
-      if (state.activeCardIndex === state.revealedCount && state.revealedCount < state.currentPack!.length) {
-        const slot = (e.target as Element).closest('.card-slot');
-        if (slot) {
-          const slotIdx = parseInt(slot.getAttribute('data-index') || '-1', 10);
-          if (slotIdx === state.revealedCount) {
-            revealNextCard();
-          }
+      const slot = (e.target as Element).closest('.card-slot');
+      if (slot) {
+        const slotIdx = parseInt(slot.getAttribute('data-index') || '-1', 10);
+        if (slotIdx === state.revealedCount && state.revealedCount < state.currentPack!.length) {
+          revealNextCard();
+        } else if (slotIdx < state.revealedCount) {
+          // If viewing an already revealed card, pop open the modal
+          state.selectedCard = state.currentPack![slotIdx];
+          render();
         }
       }
     });
@@ -815,13 +824,13 @@ function bindEvents(): void {
     });
   });
 
-  // Pack hover tilt
-  const packContainer = document.getElementById('pack-container');
-  if (packContainer) {
-    packContainer.addEventListener('mousemove', (e: MouseEvent) => {
+  // Pack hover tilt for pack selection
+  document.querySelectorAll('.pack-container').forEach(packContainer => {
+    packContainer.addEventListener('mousemove', (e: MouseEvent | Event) => {
+      const evt = e as MouseEvent;
       const rect = packContainer.getBoundingClientRect();
-      const x = (e.clientX - rect.left) / rect.width - 0.5;
-      const y = (e.clientY - rect.top) / rect.height - 0.5;
+      const x = (evt.clientX - rect.left) / rect.width - 0.5;
+      const y = (evt.clientY - rect.top) / rect.height - 0.5;
       const wrapper = packContainer.querySelector('.pack-wrapper') as HTMLElement;
       if (wrapper) {
         wrapper.style.transform = `perspective(600px) rotateY(${x * 15}deg) rotateX(${-y * 15}deg)`;
@@ -833,7 +842,7 @@ function bindEvents(): void {
         wrapper.style.transform = '';
       }
     });
-  }
+  });
 }
 
 function openPack(): void {
@@ -976,6 +985,49 @@ function updateGlassPanels() {
   } else {
     document.getElementById('showcase-left-panel')?.classList.remove('visible');
     document.getElementById('showcase-right-panel')?.classList.remove('visible');
+  }
+}
+
+function revealAllCards(): void {
+  if (!state.currentPack || state.revealedCount >= state.currentPack.length) return;
+
+  while (state.revealedCount < state.currentPack.length) {
+    const card = state.currentPack[state.revealedCount];
+    const slot = document.getElementById(`card-slot-${state.revealedCount}`);
+
+    if (slot) {
+      slot.classList.add('revealed');
+      if (card.marketPrice !== undefined && card.marketPrice !== null) {
+        const front = slot.querySelector('.card-front');
+        if (front && !front.querySelector('.price-badge')) {
+          const badge = document.createElement('div');
+          badge.className = `price-badge ${getValueTier(card.marketPrice)}`;
+          badge.textContent = formatPrice(card.marketPrice);
+          front.appendChild(badge);
+        }
+      }
+      if (isHit(card.rarity)) {
+        state.totalHits++;
+      }
+    }
+    state.revealedCount++;
+  }
+
+  // Center on the last card
+  state.activeCardIndex = state.currentPack.length - 1;
+  updateCarousel();
+
+  // Show summary actions immediately
+  document.getElementById('post-reveal-actions')?.classList.remove('hidden');
+  document.getElementById('pre-reveal-actions')?.classList.add('hidden');
+  document.getElementById('carousel-next')?.classList.add('hidden');
+
+  // Extra hype particles for revealing all
+  const app = document.getElementById('app');
+  if (app) {
+    const appRect = app.getBoundingClientRect();
+    createParticles(appRect.left + appRect.width / 2, appRect.top + appRect.height / 2, 'intense');
+    triggerScreenShake('heavy');
   }
 }
 

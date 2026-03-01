@@ -9,7 +9,7 @@
  *  - GRACEFUL FALLBACK: If api.pokemontcg.io is blocked (Cloudflare), fallback to reading official JSON from GitHub and simulate pricing data based on rarity tiers.
  */
 
-const API_BASE = '/api/pokemontcg';
+const API_BASE = 'https://api.pokemontcg.io';
 const GITHUB_FALLBACK_BASE = 'https://raw.githubusercontent.com/PokemonTCG/pokemon-tcg-data/master/cards/en';
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
 const MAX_RETRIES = 2;
