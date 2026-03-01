@@ -313,7 +313,214 @@ body {
   box-shadow: none;
 }
 
-/* --- Card Reveal Area --- */
+/* --- Glassy Showcase Area (AR-Style) --- */
+.glassy-showcase {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 1200px;
+  gap: var(--space-xl);
+  min-height: 500px;
+  position: relative;
+  z-index: 10;
+}
+
+.showcase-main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-lg);
+  flex: 0 1 auto;
+}
+
+.showcase-header {
+  text-align: center;
+}
+
+.carousel-container {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  perspective: 1000px;
+}
+
+.carousel-viewport {
+  width: 250px;
+  height: 350px;
+  overflow: hidden;
+  position: relative;
+  border-radius: var(--radius-lg);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.carousel-track {
+  display: flex;
+  height: 100%;
+  transition: transform 0.6s var(--ease-out-expo);
+  width: 100%;
+}
+
+.carousel-item {
+  flex: 0 0 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.glass-nav-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: white;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  font-size: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s var(--ease-out-expo);
+  z-index: 20;
+}
+
+.glass-nav-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  transform: scale(1.1);
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.glass-nav-btn.hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.8);
+}
+
+/* Glass Timeline */
+.glass-timeline {
+  display: flex;
+  gap: 8px;
+  padding: 12px 24px;
+  background: rgba(10, 10, 20, 0.4);
+  border-radius: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+}
+
+.timeline-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  transition: all 0.4s var(--ease-out-expo);
+}
+
+.timeline-dot.revealed {
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.timeline-dot.active {
+  background: var(--accent-gold);
+  transform: scale(1.5);
+  box-shadow: 0 0 12px var(--accent-gold);
+}
+
+/* Side Panels */
+.glass-side-panel {
+  width: 240px;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 0.5s var(--ease-out-expo);
+  pointer-events: none;
+}
+
+.glass-side-panel.left-panel {
+  transform: translateX(-20px);
+}
+
+.glass-side-panel.right-panel {
+  transform: translateX(20px);
+}
+
+.glass-side-panel.visible {
+  opacity: 1;
+  transform: translate(0);
+  pointer-events: auto;
+}
+
+.glass-side-panel .panel-inner {
+  background: rgba(20, 20, 35, 0.5);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.glass-panel-title {
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  margin-bottom: var(--space-md);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: var(--space-xs);
+}
+
+.glass-panel-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-sm);
+  font-size: 0.85rem;
+}
+
+.glass-panel-row span {
+  color: var(--text-secondary);
+}
+
+.glass-panel-row strong {
+  color: var(--text-primary);
+  font-weight: 600;
+  text-align: right;
+  max-width: 65%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Rarity highlights in glass panel */
+.glass-panel-row strong.rare {
+  color: var(--rarity-rare);
+}
+
+.glass-panel-row strong.holo_rare {
+  color: var(--rarity-holo);
+  text-shadow: 0 0 8px var(--rarity-holo);
+}
+
+.glass-panel-row margin-bottom strong.ultra_rare,
+.glass-panel-row strong.full_art {
+  color: var(--accent-purple);
+  text-shadow: 0 0 8px var(--accent-purple);
+}
+
+.glass-panel-row strong.secret_rare,
+.glass-panel-row strong.gold {
+  color: var(--accent-pink);
+  text-shadow: 0 0 8px var(--accent-pink);
+}
+
+/* --- Card Grid Area (used for 'Your Pulls' and Collection) --- */
 .reveal-area {
   display: flex;
   align-items: center;

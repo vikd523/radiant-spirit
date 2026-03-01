@@ -30,6 +30,7 @@ interface AppState {
   activeSetId: string;
   currentPack: PackCard[] | null;
   revealedCount: number;
+  activeCardIndex: number;
   isOpening: boolean;
   packsOpened: number;
   totalHits: number;
@@ -76,6 +77,7 @@ const state: AppState = {
   activeSetId: 'crown-zenith',
   currentPack: null,
   revealedCount: 0,
+  activeCardIndex: 0,
   isOpening: false,
   packsOpened: 0,
   totalHits: 0,
@@ -394,25 +396,53 @@ function renderRevealArea(): string {
   const pack = state.currentPack!;
   const allRevealed = state.revealedCount >= pack.length;
 
-  if (allRevealed) {
-    return `
-      <h1 class="set-title">Your Pulls</h1>
-      <p class="set-subtitle">${getActiveSet().set.name} · Pack #${state.packsOpened}</p>
-      <div class="reveal-area">
-        ${pack.map((card, i) => renderCardSlot(card, i, true, 'pack')).join('')}
-      </div>
-      <div class="post-reveal-actions">
-        <button class="open-btn summary-btn" id="view-summary-btn">📊 Pack Summary</button>
-        <button class="open-btn" id="open-another-btn">Open Another Pack</button>
-      </div>
-    `;
-  }
-
   return `
-    <h1 class="set-title">Tap to Reveal</h1>
-    <p class="set-subtitle">Card ${state.revealedCount + 1} of ${pack.length}</p>
-    <div class="reveal-area">
-      ${pack.map((card, i) => renderCardSlot(card, i, i < state.revealedCount, 'pack')).join('')}
+    <div class="glassy-showcase">
+      <!-- Left Info Panel -->
+      <div class="glass-side-panel left-panel" id="showcase-left-panel">
+        <div class="panel-inner" id="panel-details">
+          <!-- Populated by JS on flip -->
+        </div>
+      </div>
+
+      <!-- Center Stage -->
+      <div class="showcase-main">
+        <div class="showcase-header">
+          <h2 class="set-subtitle" style="margin:0; font-size: 1.1rem; color: #fff;">Card <span id="active-card-num">${state.activeCardIndex + 1}</span> of ${pack.length}</h2>
+        </div>
+
+        <div class="carousel-container">
+          <button id="carousel-prev" class="glass-nav-btn ${state.activeCardIndex === 0 ? 'hidden' : ''}">❮</button>
+          
+          <div class="carousel-viewport">
+            <div class="carousel-track" id="carousel-track" style="transform: translateX(-${state.activeCardIndex * 100}%);">
+              ${pack.map((card, i) => `
+                <div class="carousel-item">
+                  ${renderCardSlot(card, i, i < state.revealedCount, 'pack')}
+                </div>
+              `).join('')}
+            </div>
+          </div>
+
+          <button id="carousel-next" class="glass-nav-btn ${state.activeCardIndex >= state.revealedCount ? 'hidden' : ''}">❯</button>
+        </div>
+
+        <div class="glass-timeline">
+          ${pack.map((_, i) => `<div class="timeline-dot ${i === state.activeCardIndex ? 'active' : ''} ${i < state.revealedCount ? 'revealed' : ''}" id="dot-${i}" data-idx="${i}"></div>`).join('')}
+        </div>
+        
+        <div class="post-reveal-actions ${allRevealed ? '' : 'hidden'}" id="post-reveal-actions">
+          <button class="open-btn summary-btn" id="view-summary-btn">📊 Pack Summary</button>
+          <button class="open-btn" id="open-another-btn">Open Another Pack</button>
+        </div>
+      </div>
+
+      <!-- Right Info Panel -->
+      <div class="glass-side-panel right-panel" id="showcase-right-panel">
+        <div class="panel-inner" id="panel-stats">
+          <!-- Populated by JS on flip -->
+        </div>
+      </div>
     </div>
   `;
 }
@@ -626,6 +656,7 @@ function bindEvents(): void {
     destroyParticles();
     state.currentPack = null;
     state.revealedCount = 0;
+    state.activeCardIndex = 0;
     state.isOpening = false;
     state.showSummary = false;
     render();
@@ -682,18 +713,61 @@ function bindEvents(): void {
     render();
   });
 
-  // Card click to reveal
-  if (state.currentPack && state.revealedCount < state.currentPack.length) {
-    const nextSlot = document.getElementById(`card-slot-${state.revealedCount}`);
-    nextSlot?.addEventListener('click', revealNextCard);
+  // Carousel & Reveal logic
+  if (state.currentPack) {
+    document.getElementById('carousel-track')?.addEventListener('click', (e) => {
+      // Only allow revealing if looking at the next unrevealed card
+      if (state.activeCardIndex === state.revealedCount && state.revealedCount < state.currentPack!.length) {
+        const slot = (e.target as Element).closest('.card-slot');
+        if (slot) {
+          const slotIdx = parseInt(slot.getAttribute('data-index') || '-1', 10);
+          if (slotIdx === state.revealedCount) {
+            revealNextCard();
+          }
+        }
+      }
+    });
+
+    document.getElementById('carousel-prev')?.addEventListener('click', () => {
+      if (state.activeCardIndex > 0) {
+        state.activeCardIndex--;
+        updateCarousel();
+      }
+    });
+
+    document.getElementById('carousel-next')?.addEventListener('click', () => {
+      if (state.activeCardIndex < state.revealedCount && state.activeCardIndex < state.currentPack!.length - 1) {
+        state.activeCardIndex++;
+        updateCarousel();
+      }
+    });
 
     const keyHandler = (e: KeyboardEvent) => {
+      if (state.showSummary || !state.currentPack) return;
       if (e.key === ' ' || e.key === 'Enter') {
         e.preventDefault();
-        revealNextCard();
-        document.removeEventListener('keydown', keyHandler);
+        // If viewing an already revealed card, go right
+        if (state.activeCardIndex < state.revealedCount) {
+          if (state.activeCardIndex < state.currentPack!.length - 1) {
+            document.getElementById('carousel-next')?.click();
+          }
+        } else {
+          // If on the unrevealed card, flip it
+          revealNextCard();
+        }
+      } else if (e.key === 'ArrowRight') {
+        document.getElementById('carousel-next')?.click();
+      } else if (e.key === 'ArrowLeft') {
+        document.getElementById('carousel-prev')?.click();
       }
     };
+
+    // Cleanup old listener if render runs again
+    (window as any)._carouselKeyHandler = (window as any)._carouselKeyHandler || null;
+    if ((window as any)._carouselKeyHandler) {
+      document.removeEventListener('keydown', (window as any)._carouselKeyHandler);
+    }
+    (window as any)._carouselKeyHandler = keyHandler;
     document.addEventListener('keydown', keyHandler);
   }
 
@@ -770,6 +844,7 @@ function openPack(): void {
   const setData = getActiveSet();
   state.currentPack = generatePack(setData);
   state.revealedCount = 0;
+  state.activeCardIndex = 0;
   state.packsOpened++;
 
   // Sort pack: energy first → commons → uncommons → rare+ last (drama!)
@@ -837,23 +912,71 @@ function revealNextCard(): void {
 
   state.revealedCount++;
 
-  setTimeout(() => {
-    if (state.revealedCount < state.currentPack!.length) {
-      const nextSlot = document.getElementById(`card-slot-${state.revealedCount}`);
-      nextSlot?.addEventListener('click', revealNextCard);
+  // Update UI state without full re-render
+  updateCarousel();
 
-      const keyHandler = (e: KeyboardEvent) => {
-        if (e.key === ' ' || e.key === 'Enter') {
-          e.preventDefault();
-          revealNextCard();
-          document.removeEventListener('keydown', keyHandler);
-        }
-      };
-      document.addEventListener('keydown', keyHandler);
-    } else {
-      setTimeout(() => render(), 600);
+  if (state.revealedCount >= state.currentPack.length) {
+    setTimeout(() => {
+      document.getElementById('post-reveal-actions')?.classList.remove('hidden');
+      document.getElementById('carousel-next')?.classList.add('hidden');
+    }, 600);
+  }
+}
+
+function updateCarousel() {
+  if (!state.currentPack) return;
+  const maxIdx = state.currentPack.length - 1;
+  state.activeCardIndex = Math.max(0, Math.min(state.activeCardIndex, maxIdx));
+
+  const track = document.getElementById('carousel-track');
+  if (track) track.style.transform = `translateX(-${state.activeCardIndex * 100}%)`;
+
+  const activeNum = document.getElementById('active-card-num');
+  if (activeNum) activeNum.textContent = (state.activeCardIndex + 1).toString();
+
+  document.querySelectorAll('.timeline-dot').forEach((dot, i) => {
+    dot.classList.toggle('active', i === state.activeCardIndex);
+    dot.classList.toggle('revealed', i < state.revealedCount);
+  });
+
+  const prevBtn = document.getElementById('carousel-prev');
+  const nextBtn = document.getElementById('carousel-next');
+  if (prevBtn) prevBtn.classList.toggle('hidden', state.activeCardIndex === 0);
+  if (nextBtn) nextBtn.classList.toggle('hidden', state.activeCardIndex >= state.revealedCount || state.activeCardIndex === maxIdx);
+
+  updateGlassPanels();
+}
+
+function updateGlassPanels() {
+  if (!state.currentPack) return;
+  const leftPanel = document.getElementById('panel-details');
+  const rightPanel = document.getElementById('panel-stats');
+
+  if (state.activeCardIndex < state.revealedCount) {
+    const card = state.currentPack[state.activeCardIndex];
+    if (leftPanel) {
+      leftPanel.innerHTML = `
+        <h3 class="glass-panel-title">Details</h3>
+        <div class="glass-panel-row"><span>Name</span> <strong>${card.name}</strong></div>
+        <div class="glass-panel-row"><span>Type</span> <strong>${card.type}</strong></div>
+        <div class="glass-panel-row"><span>Rarity</span> <strong class="${card.rarity}">${RARITY_DISPLAY[card.rarity]?.label || card.rarity}</strong></div>
+        <div class="glass-panel-row"><span>Number</span> <strong>#${card.number}</strong></div>
+      `;
+      document.getElementById('showcase-left-panel')?.classList.add('visible');
     }
-  }, 100);
+    if (rightPanel) {
+      const priceStr = card.marketPrice !== undefined && card.marketPrice !== null ? formatPrice(card.marketPrice) : 'N/A';
+      rightPanel.innerHTML = `
+        <h3 class="glass-panel-title">Market</h3>
+        <div class="glass-panel-row"><span>Value</span> <strong class="${getValueTier(card.marketPrice ?? null)}">${priceStr}</strong></div>
+        ${card.priceVariant ? `<div class="glass-panel-row"><span>Variant</span> <strong>${card.priceVariant}</strong></div>` : ''}
+      `;
+      document.getElementById('showcase-right-panel')?.classList.add('visible');
+    }
+  } else {
+    document.getElementById('showcase-left-panel')?.classList.remove('visible');
+    document.getElementById('showcase-right-panel')?.classList.remove('visible');
+  }
 }
 
 function triggerHitEffects(card: PackCard, slot: HTMLElement): void {
