@@ -2182,24 +2182,25 @@ body {
   top: 50px;
   left: 10px;
   width: 200px;
-  height: 200px;
+  height: 180px;
   z-index: 105;
   pointer-events: none;
   overflow: hidden;
-  /* Crop overflowing content (the watermark at the bottom) */
 }
 
 /* 
- * The spline-viewer is made TALLER than the container.
- * The "Built with Spline" watermark is painted at the bottom of the WebGL canvas.
- * By making the viewer 280px tall in a 200px container with overflow:hidden,
- * the bottom 80px (containing the watermark) gets cropped off.
+ * Spline's camera auto-fills whatever canvas size you give it.
+ * At 200px, it zooms into Gastly's face. At 600px, it shows the full body.
+ * We render at 600x700 for Spline's camera, then scale(0.33) shrinks it 
+ * to ~200x231 visually. The container's 180px height crops the bottom
+ * where the scaled-down watermark sits.
  */
 .spline-widget-container spline-viewer {
   display: block;
-  width: 100%;
-  height: 280px;
-  /* Taller than the 200px container to push watermark out of view */
+  width: 600px;
+  height: 700px;
+  transform: scale(0.33);
+  transform-origin: top left;
   pointer-events: auto;
 }
 
