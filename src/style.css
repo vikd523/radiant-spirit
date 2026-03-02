@@ -2240,7 +2240,7 @@ body {
   }
 
   /* Disable interaction on mobile Spline to prevent scroll hijacking */
-  .spline-widget-container iframe {
+  .spline-widget-container spline-viewer {
     pointer-events: none !important;
   }
 
@@ -2501,24 +2501,32 @@ body {
   top: 50px;
   left: 10px;
   width: 200px;
-  height: 200px;
+  height: 180px;
   z-index: 105;
   pointer-events: none;
   overflow: hidden;
-  border-radius: 12px;
-  /* Force GPU compositing layer — fixes Safari/Mac WebGL rendering */
-  transform: translate3d(0, 0, 0);
-  -webkit-transform: translate3d(0, 0, 0);
-  will-change: transform;
 }
 
-/* Iframe fills the container; pointer-events enabled for interaction */
-.spline-widget-container iframe {
+/* 
+ * Spline's camera auto-fills whatever canvas size you give it.
+ * At 200px, it zooms into Gastly's face. At 600px, it shows the full body.
+ * We render at 600x700 for Spline's camera, then scale(0.33) shrinks it 
+ * to ~200x231 visually. The container's 180px height crops the bottom
+ * where the scaled-down watermark sits.
+ */
+.spline-widget-container spline-viewer {
+  display: block;
+  width: 600px;
+  height: 700px;
+  transform: scale(0.33);
+  transform-origin: top left;
   pointer-events: auto;
 }
 
 /*
- * Desktop-only scroll lock
+ * Desktop-only scroll lock: Spline injects overflow:hidden on the body.
+ * We keep that behavior on desktop where Spline renders, but allow
+ * scrolling on mobile/tablet where Spline is hidden.
  */
 @media (min-width: 1024px) {
   body {
