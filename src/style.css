@@ -2504,7 +2504,13 @@ body {
   height: 180px;
   z-index: 105;
   pointer-events: none;
-  overflow: hidden;
+  overflow: visible;
+  /* Force GPU compositing layer — fixes Safari/Mac WebGL rendering */
+  transform: translate3d(0, 0, 0);
+  -webkit-transform: translate3d(0, 0, 0);
+  will-change: transform;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
 }
 
 /* 
