@@ -156,17 +156,26 @@ export async function getCollectionStats(userId: string): Promise<{
  * Convert Supabase collection cards back to PackCard format for rendering.
  */
 export function collectionToPackCards(cards: CollectionCard[]): PackCard[] {
-    return cards.map(c => ({
-        number: c.card_number,
-        name: c.card_name,
-        type: '',
-        emoji: '🃏',
-        rarity: c.rarity,
-        isReverseHolo: c.is_reverse_holo,
-        isGallery: c.is_gallery,
-        slotIndex: 0,
-        imageSmall: c.image_small || undefined,
-        imageLarge: c.image_large || undefined,
-        marketPrice: c.market_price,
-    }));
+    const result: PackCard[] = [];
+    for (const c of cards) {
+        // Expand each row by its quantity so grouping in renderInventory counts correctly
+        const qty = Math.max(1, c.quantity ?? 1);
+        const base: PackCard = {
+            number: c.card_number,
+            name: c.card_name,
+            type: '',
+            emoji: '🃏',
+            rarity: c.rarity,
+            isReverseHolo: c.is_reverse_holo,
+            isGallery: c.is_gallery,
+            slotIndex: 0,
+            imageSmall: c.image_small || undefined,
+            imageLarge: c.image_large || undefined,
+            marketPrice: c.market_price,
+        };
+        for (let i = 0; i < qty; i++) {
+            result.push({ ...base });
+        }
+    }
+    return result;
 }

@@ -291,8 +291,9 @@ function render(): void {
   // Authenticated — show the full app
   const splineContainer = document.getElementById('spline-persistent-container');
   if (splineContainer) {
-    const shouldLoadSpline = navigator.hardwareConcurrency >= 2;
-    splineContainer.style.display = shouldLoadSpline ? 'block' : 'none';
+    // Show Spline by default — only hide on very low-end devices
+    const cores = navigator.hardwareConcurrency ?? 4;
+    splineContainer.style.display = cores >= 2 ? 'block' : 'none';
   }
 
   app.innerHTML = `
@@ -736,6 +737,7 @@ function bindEvents(): void {
   const myCollectionBtn = document.getElementById('MyCollectionBtn');
   myCollectionBtn?.addEventListener('click', async () => {
     state.showInventory = true;
+    state.inventoryDisplayCount = 100; // Reset pagination each time
     state.isLoadingApi = true; // Show loading spinner while fetching
     render();
 
@@ -779,6 +781,13 @@ function bindEvents(): void {
   const filterRarity = document.getElementById('filter-rarity') as HTMLSelectElement;
   filterRarity?.addEventListener('change', (e) => {
     state.inventoryFilters.rarity = (e.target as HTMLSelectElement).value;
+    render();
+  });
+
+  // Load More button in collection view
+  const loadMoreBtn = document.getElementById('load-more-cards-btn');
+  loadMoreBtn?.addEventListener('click', () => {
+    state.inventoryDisplayCount += 100;
     render();
   });
 
