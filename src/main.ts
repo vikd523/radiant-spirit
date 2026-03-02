@@ -294,7 +294,7 @@ function render(): void {
   // Authenticated — show the full app
   const splineContainer = document.getElementById('spline-persistent-container');
   if (splineContainer) {
-    const shouldLoadSpline = window.innerWidth >= 1024 && navigator.hardwareConcurrency > 2;
+    const shouldLoadSpline = navigator.hardwareConcurrency >= 2;
     splineContainer.style.display = shouldLoadSpline ? 'block' : 'none';
   }
 

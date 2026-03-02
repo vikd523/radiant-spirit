@@ -91,6 +91,19 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Purple up-glow on the background */
+body::after {
+  content: '';
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 75vh;
+  background: radial-gradient(circle at bottom center, rgba(155, 89, 255, 0.15) 0%, transparent 80%);
+  pointer-events: none;
+  z-index: -1;
+}
+
 #app {
   min-height: 100vh;
   display: flex;
@@ -1961,7 +1974,7 @@ body {
   width: 600px;
   height: 600px;
   background: radial-gradient(circle,
-      rgba(74, 125, 255, 0.06) 0%,
+      rgba(155, 89, 255, 0.08) 0%,
       rgba(155, 89, 255, 0.04) 40%,
       transparent 70%);
   animation: landing-glow-pulse 8s ease-in-out infinite reverse;
@@ -2218,9 +2231,17 @@ body {
     min-width: 0;
   }
 
-  /* Hide Spline on mobile */
+  /* Scale Spline on mobile */
   .spline-widget-container {
-    display: none !important;
+    transform: scale(0.65);
+    transform-origin: top left;
+    top: 40px !important;
+    left: -10px !important;
+  }
+
+  /* Disable interaction on mobile Spline to prevent scroll hijacking */
+  .spline-widget-container spline-viewer {
+    pointer-events: none !important;
   }
 
   /* Typography scaling */
@@ -2394,9 +2415,12 @@ body {
     gap: var(--space-md);
   }
 
-  /* Hide Spline on tablet */
+  /* Scale Spline on tablet */
   .spline-widget-container {
-    display: none !important;
+    transform: scale(0.8);
+    transform-origin: top left;
+    top: 50px !important;
+    left: -10px !important;
   }
 
   /* Typography */

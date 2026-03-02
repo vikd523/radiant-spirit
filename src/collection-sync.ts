@@ -147,10 +147,30 @@ export async function getCollectionStats(userId: string): Promise<{
 }> {
     const defaultStats = { totalCards: 0, uniqueCards: 0, totalValue: 0, packsOpened: 0 };
 
-    const { data: cards } = await supabase
-        .from('collections')
-        .select('quantity, market_price')
-        .eq('user_id', userId);
+    const PAGE_SIZE = 1000;
+    const allCards: { quantity: number; market_price: number | null }[] = [];
+    let from = 0;
+    let keepGoing = true;
+
+    while (keepGoing) {
+        const { data: cards, error } = await supabase
+            .from('collections')
+            .select('quantity, market_price')
+            .eq('user_id', userId)
+            .range(from, from + PAGE_SIZE - 1);
+
+        if (error || !cards) {
+            break;
+        }
+
+        allCards.push(...cards);
+
+        if (cards.length < PAGE_SIZE) {
+            keepGoing = false;
+        } else {
+            from += PAGE_SIZE;
+        }
+    }
 
     const { data: profile } = await supabase
         .from('profiles')
@@ -158,12 +178,12 @@ export async function getCollectionStats(userId: string): Promise<{
         .eq('id', userId)
         .maybeSingle();
 
-    if (!cards) return defaultStats;
+    if (allCards.length === 0) return defaultStats;
 
     return {
-        totalCards: cards.reduce((sum, c) => sum + (c.quantity || 1), 0),
-        uniqueCards: cards.length,
-        totalValue: cards.reduce((sum, c) => sum + ((c.market_price || 0) * (c.quantity || 1)), 0),
+        totalCards: allCards.reduce((sum, c) => sum + (c.quantity || 1), 0),
+        uniqueCards: allCards.length,
+        totalValue: allCards.reduce((sum, c) => sum + ((c.market_price || 0) * (c.quantity || 1)), 0),
         packsOpened: profile?.packs_opened || 0,
     };
 }
