@@ -95,6 +95,7 @@ interface AppState {
     type: string;
     rarity: string;
   };
+  inventoryDisplayCount: number;
   // Phase 3: Auth
   user: AuthUser | null;
   isAuthLoading: boolean;
@@ -929,7 +930,7 @@ function bindEvents(): void {
   });
 }
 
-function openPack(): void {
+async function openPack(): Promise<void> {
   if (state.isOpening || state.isLoadingApi) return;
   state.isOpening = true;
   state.showSummary = false;
@@ -963,18 +964,17 @@ function openPack(): void {
     preloadImages(packEntries);
   }
 
-  // Add cards to inventory (localStorage cache + Supabase primary)
+  // Add cards to inventory (localStorage cache)
   state.inventory.push(...state.currentPack);
   saveInventory();
 
-  // Always persist to Supabase (user is guaranteed to exist)
-  saveCardsToCollection(state.user!.id, state.currentPack, state.activeSetId)
-    .then(result => {
-      if (result.error) console.warn('[Sync] Failed to save to Supabase:', result.error);
-      else console.log('[Sync] Pack saved to Supabase');
-    });
-
+  // Render immediately so user sees the pack
   render();
+
+  // Persist to Supabase — awaited so collection view is always consistent
+  const result = await saveCardsToCollection(state.user!.id, state.currentPack, state.activeSetId);
+  if (result.error) console.warn('[Sync] Failed to save to Supabase:', result.error);
+  else console.log('[Sync] Pack saved to Supabase');
 }
 
 function revealNextCard(): void {

@@ -27,7 +27,7 @@ export async function saveCardsToCollection(
     cards: PackCard[],
     setId: string
 ): Promise<{ error: string | null }> {
-    // 1. Group cards within the pack to avoid redundant queries for duplicates
+    // 1. Group cards within the pack to avoid redundant rows for duplicates
     const groupedCards = new Map<string, { card: PackCard, count: number }>();
     for (const card of cards) {
         const key = `${card.number}-${card.rarity}-${card.isReverseHolo}`;
@@ -38,69 +38,32 @@ export async function saveCardsToCollection(
         }
     }
 
-    // 2. Process all unique cards concurrently
-    const operations = Array.from(groupedCards.values()).map(async ({ card, count }) => {
-        // Check if the card already exists
-        const { data: existing } = await supabase
-            .from('collections')
-            .select('id, quantity')
-            .eq('user_id', userId)
-            .eq('card_number', card.number)
-            .eq('set_id', setId)
-            .eq('rarity', card.rarity)
-            .eq('is_reverse_holo', card.isReverseHolo)
-            .maybeSingle();
+    // 2. Serialize cards for the atomic upsert RPC
+    const payload = Array.from(groupedCards.values()).map(({ card, count }) => ({
+        card_number: card.number,
+        card_name: card.name,
+        set_id: setId,
+        rarity: card.rarity,
+        is_reverse_holo: card.isReverseHolo,
+        is_gallery: card.isGallery,
+        image_small: card.imageSmall ?? null,
+        image_large: card.imageLarge ?? null,
+        market_price: card.marketPrice ?? null,
+        quantity: count,
+    }));
 
-        if (existing) {
-            // Increment quantity
-            const { error } = await supabase
-                .from('collections')
-                .update({
-                    quantity: existing.quantity + count,
-                    last_pulled_at: new Date().toISOString(),
-                    market_price: card.marketPrice ?? null,
-                    image_small: card.imageSmall ?? null,
-                    image_large: card.imageLarge ?? null,
-                })
-                .eq('id', existing.id);
-
-            if (error) {
-                console.error('[Sync] Update failed:', error);
-                return { error: error.message };
-            }
-        } else {
-            // Insert new card
-            const { error } = await supabase.from('collections').insert({
-                user_id: userId,
-                card_number: card.number,
-                card_name: card.name,
-                set_id: setId,
-                rarity: card.rarity,
-                is_reverse_holo: card.isReverseHolo,
-                is_gallery: card.isGallery,
-                image_small: card.imageSmall ?? null,
-                image_large: card.imageLarge ?? null,
-                market_price: card.marketPrice ?? null,
-                quantity: count,
-            });
-
-            if (error) {
-                console.error('[Sync] Insert failed:', error);
-                return { error: error.message };
-            }
-        }
-        return { error: null };
+    // 3. Single atomic call — DB handles INSERT/UPDATE via ON CONFLICT
+    const { error: upsertError } = await supabase.rpc('upsert_collection_cards', {
+        p_user_id: userId,
+        p_cards: payload,
     });
 
-    // Wait for all database operations to complete
-    const results = await Promise.all(operations);
-    const firstError = results.find(r => r.error);
-    if (firstError) {
-        return { error: firstError.error };
+    if (upsertError) {
+        console.error('[Sync] Upsert failed:', upsertError);
+        return { error: upsertError.message };
     }
 
-
-    // Increment packs_opened counter
+    // 4. Increment packs_opened counter
     try {
         await supabase.rpc('increment_packs_opened', { uid: userId });
     } catch {
