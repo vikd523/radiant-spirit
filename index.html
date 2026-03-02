@@ -14,26 +14,36 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:ital,wght@0,400;0,500;0,700;1,400&display=swap"
     rel="stylesheet" />
-  <script type="module" src="https://unpkg.com/@splinetool/viewer/build/spline-viewer.js"></script>
-  <link rel="preload" href="https://prod.spline.design/NoIfSkVO2P9kDRDU/scene.splinecode" as="fetch" crossorigin />
 </head>
 
 <body>
-  <!-- Persistent Spline container so it never reloads on app state change -->
+  <!-- Persistent Spline container — iframe embed for cross-browser reliability -->
   <div id="spline-persistent-container" class="spline-widget-container">
-    <spline-viewer url="https://prod.spline.design/NoIfSkVO2P9kDRDU/scene.splinecode" background="transparent"
-      loading-anim-type="none"
-      style="-webkit-transform: translate3d(0,0,0); transform: translate3d(0,0,0);"></spline-viewer>
+    <iframe id="spline-iframe" src="https://my.spline.design/NoIfSkVO2P9kDRDU/" frameborder="0" allowfullscreen
+      allow="autoplay" loading="eager" style="width:100%; height:100%; border:none; pointer-events:auto;"></iframe>
+    <!-- Fallback if iframe fails to load -->
+    <div id="spline-fallback"
+      style="display:none; width:100%; height:100%; align-items:center; justify-content:center;">
+      <span style="font-size:5rem; filter:drop-shadow(0 0 20px rgba(128,0,255,0.6));">👻</span>
+    </div>
   </div>
 
   <div id="app"></div>
   <div id="three-canvas-container"></div>
   <script type="module" src="/src/main.ts"></script>
 
-  <!-- Script to block zoom and remove "Built with Spline" watermark -->
+  <!-- Spline iframe fallback + scroll block -->
   <script>
     (function () {
-      // 1) Block scroll-wheel zoom on the Spline container
+      var iframe = document.getElementById('spline-iframe');
+      var fallback = document.getElementById('spline-fallback');
+      var loaded = false;
+
+      if (iframe) {
+        iframe.addEventListener('load', function () { loaded = true; });
+      }
+
+      // Block scroll-wheel zoom on the Spline container
       var container = document.getElementById('spline-persistent-container');
       if (container) {
         container.addEventListener('wheel', function (e) {
@@ -42,73 +52,13 @@
         }, { passive: false, capture: true });
       }
 
-      // 2) Remove the "Built with Spline" watermark from the shadow DOM
-      function removeSplineLogo() {
-        var viewer = document.querySelector('spline-viewer');
-        if (!viewer || !viewer.shadowRoot) return false;
-        var root = viewer.shadowRoot;
-        var removed = false;
-
-        // Strategy A: Find by ID
-        var logo = root.getElementById('logo');
-        if (logo) { logo.remove(); removed = true; }
-
-        // Strategy B: Find any <a> tag linking to spline.design
-        var anchors = root.querySelectorAll('a');
-        anchors.forEach(function (a) {
-          var href = a.getAttribute('href') || '';
-          if (href.indexOf('spline') !== -1) {
-            a.remove();
-            removed = true;
-          }
-        });
-
-        // Strategy C: Find any element with "Built with" text
-        var textEls = root.querySelectorAll('div, span, a, p');
-        textEls.forEach(function (el) {
-          var txt = el.textContent || '';
-          if (txt.indexOf('Built with') !== -1 || txt.indexOf('built with') !== -1) {
-            el.remove();
-            removed = true;
-          }
-        });
-
-        // Strategy D: Inject CSS to hide anything we might have missed
-        if (!root.querySelector('#hide-spline-logo')) {
-          var s = document.createElement('style');
-          s.id = 'hide-spline-logo';
-          s.textContent = [
-            '#logo { display:none!important; }',
-            'a[href*="spline"] { display:none!important; }',
-            'div[style*="bottom"] a { display:none!important; }'
-          ].join('\n');
-          root.appendChild(s);
-          removed = true;
+      // Fallback: if iframe doesn't load in 8 seconds, show static emoji
+      setTimeout(function () {
+        if (!loaded && iframe && fallback) {
+          iframe.style.display = 'none';
+          fallback.style.display = 'flex';
         }
-
-        return removed;
-      }
-
-      // Poll every 500ms for 30 seconds
-      var attempts = 0;
-      var interval = setInterval(function () {
-        attempts++;
-        if (removeSplineLogo() || attempts >= 60) {
-          clearInterval(interval);
-        }
-      }, 500);
-
-      // Also observe shadow root mutations once the element is defined
-      if (window.customElements) {
-        customElements.whenDefined('spline-viewer').then(function () {
-          var viewer = document.querySelector('spline-viewer');
-          if (viewer && viewer.shadowRoot) {
-            new MutationObserver(function () { removeSplineLogo(); })
-              .observe(viewer.shadowRoot, { childList: true, subtree: true });
-            removeSplineLogo();
-          }
-        }).catch(function () { });
-      }
+      }, 8000);
     })();
   </script>
 </body>
