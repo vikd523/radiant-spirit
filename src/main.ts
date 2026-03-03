@@ -978,6 +978,18 @@ function bindEvents(): void {
       const idx = parseInt(el.getAttribute('data-index') || '0', 10);
       if (source === 'inventory') {
         let filteredInventory = state.inventory;
+
+        // Apply search filter
+        const query = state.inventoryFilters.searchQuery.trim().toLowerCase();
+        if (query) {
+          filteredInventory = filteredInventory.filter(c => c.name.toLowerCase().includes(query));
+        }
+
+        // Apply pack filter
+        if (state.inventoryFilters.pack !== 'All') {
+          filteredInventory = filteredInventory.filter(c => c.setId === state.inventoryFilters.pack);
+        }
+
         if (state.inventoryFilters.type !== 'All') {
           filteredInventory = filteredInventory.filter(c => c.type === state.inventoryFilters.type);
         }
